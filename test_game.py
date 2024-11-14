@@ -33,7 +33,7 @@ def create_complex_mitre_dag():
     return G
 
 # Generate the initial prompt and story context
-def generate_initial_prompt():
+def generate_initial_prompt(graph):
     try:
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
@@ -43,6 +43,20 @@ def generate_initial_prompt():
                     "Generate a detailed introductory story for this simulation. The story should describe a fictional target organization, "
                     "the attacker’s objectives, the organization's critical systems, and any initial reconnaissance techniques available for starting the attack."
                     "Structure the story as a starting point for a cybersecurity attack simulation game."
+                    "You must present the options following the start phase."
+                    f"Here is the DAG of MITRE ATT&CK techniques:"
+                    '"Start": ["OSINT", "Phishing", "Network Scanning", "Social Engineering"],'
+                    '"OSINT": ["Exploiting Vulnerability"],'
+                    '"Phishing": ["Spear Phishing"],'
+                    '"Network Scanning": ["Exploiting Vulnerability"],'
+                    '"Social Engineering": ["Spear Phishing"],'
+                    '"Spear Phishing": ["Malware Execution"],'
+                    '"Malware Execution": ["Credential Dumping"],'
+                    '"Credential Dumping": ["Data Exfiltration via C2", "Privilege Escalation"],'
+                    '"Exploiting Vulnerability": ["Backdoor Installation"],'
+                    '"Backdoor Installation": ["Credential Manipulation"],'
+                    '"Data Exfiltration via C2": ["Data Corruption", "Service Disruption"],'
+                    '"DNS Tunneling": ["Ransomware"]"'
                 )}
             ],
             temperature=0.7 # Adjust the temperature for more creative responses
@@ -63,7 +77,20 @@ def master_llm_response(current_node, graph, ongoing_context, player_input, mode
         f"\nYou are currently in the '{current_node}' phase. "
         f"Player input: {player_input}. Available techniques for the next phase include: {options}. "
         "Analyze the player’s response and determine the next appropriate technique to advance the attack sequence. "
-        "Provide only the next phase name (e.g., OSINT, Phishing) without any additional text."
+        "Provide only the exact next phase name without any additional text."
+        f"Here is the entire DAG:"
+        '"Start": ["OSINT", "Phishing", "Network Scanning", "Social Engineering"],'
+        '"OSINT": ["Exploiting Vulnerability"],'
+        '"Phishing": ["Spear Phishing"],'
+        '"Network Scanning": ["Exploiting Vulnerability"],'
+        '"Social Engineering": ["Spear Phishing"],'
+        '"Spear Phishing": ["Malware Execution"],'
+        '"Malware Execution": ["Credential Dumping"],'
+        '"Credential Dumping": ["Data Exfiltration via C2", "Privilege Escalation"],'
+        '"Exploiting Vulnerability": ["Backdoor Installation"],'
+        '"Backdoor Installation": ["Credential Manipulation"],'
+        '"Data Exfiltration via C2": ["Data Corruption", "Service Disruption"],'
+        '"DNS Tunneling": ["Ransomware"]"'
     )
 
     try:
@@ -91,7 +118,7 @@ def master_llm_response(current_node, graph, ongoing_context, player_input, mode
         return None
 
 # Story LLM function that generates narrative for each phase
-def story_llm_response(current_node, ongoing_context, model="gpt-3.5-turbo"):
+def story_llm_response(current_node, graph, ongoing_context, model="gpt-3.5-turbo"):
     # Story LLM prompt to create detailed narrative
     prompt = (
         f"{ongoing_context} "
@@ -99,6 +126,20 @@ def story_llm_response(current_node, ongoing_context, model="gpt-3.5-turbo"):
         "Based on the player’s previous actions and game context, generate a descriptive narrative for this phase. "
         "Describe the player’s actions, their outcomes, and any important discoveries. "
         "Suggest logical follow-up actions that the player could consider in the next phase."
+        f"You must present the options following the {current_node} phase."
+        f"Here is the DAG of MITRE ATT&CK techniques:"
+        '"Start": ["OSINT", "Phishing", "Network Scanning", "Social Engineering"],'
+        '"OSINT": ["Exploiting Vulnerability"],'
+        '"Phishing": ["Spear Phishing"],'
+        '"Network Scanning": ["Exploiting Vulnerability"],'
+        '"Social Engineering": ["Spear Phishing"],'
+        '"Spear Phishing": ["Malware Execution"],'
+        '"Malware Execution": ["Credential Dumping"],'
+        '"Credential Dumping": ["Data Exfiltration via C2", "Privilege Escalation"],'
+        '"Exploiting Vulnerability": ["Backdoor Installation"],'
+        '"Backdoor Installation": ["Credential Manipulation"],'
+        '"Data Exfiltration via C2": ["Data Corruption", "Service Disruption"],'
+        '"DNS Tunneling": ["Ransomware"]"'
     )
 
     try:
@@ -127,7 +168,7 @@ def simulate_mitre_phase(graph, current_node, ongoing_context):
 
     if next_phase:
         # Story LLM generates narrative for the selected phase
-        story_response = story_llm_response(next_phase, ongoing_context)
+        story_response = story_llm_response(next_phase, graph, ongoing_context)
         ongoing_context += f"\n\n{story_response}"  # Update the story with LLM-generated progression
         print(f"\nLLM Response: {story_response}")
         # Recursively proceed to the next phase
@@ -138,7 +179,7 @@ def simulate_mitre_phase(graph, current_node, ongoing_context):
 # Main game loop
 def main():
     mitre_dag = create_complex_mitre_dag()
-    organization_story = generate_initial_prompt()  # Full setup story generated by LLM
+    organization_story = generate_initial_prompt(mitre_dag)  # Full setup story generated by LLM
     if organization_story:
         print("\n--- Initial Setup ---")
         print(organization_story)
